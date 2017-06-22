@@ -54,18 +54,35 @@ class Delete(Atomic):
                 _image_names.append(len(del_obj.id))
         max_img_name = max(_image_names) + 2
 
+        #When found used imags, we stop action of trying to delete it
+        # we then add it to a new list which will be processed
+        used_images = []
+        all_containers = [x.image for x in beu.get_containers()]
+        for image in delete_objects:
+            if image.id in all_containers:
+                image.used = True
+
         if not self.args.assumeyes:
             util.write_out("Do you wish to delete the following images?\n")
         else:
             util.write_out("The following images will be deleted.\n")
 
-        two_col = "   {0:" + str(max_img_name) + "} {1}"
-        util.write_out(two_col.format("IMAGE", "STORAGE"))
+        three_col = "   {0:" + str(max_img_name) + "} {1:12}  {2}"
+        util.write_out(three_col.format("IMAGE", "STORAGE","USED"))
         for del_obj in delete_objects:
             image = None if not del_obj.repotags else del_obj.repotags[0]
+            imageStatus  = 'YES' if del_obj.used else 'NO'
             if image is None or "<none>" in image:
                 image = del_obj.id[0:12]
-            util.write_out(two_col.format(image, del_obj.backend.backend))
+
+            if del_obj.used:
+                used_images.append(del_obj)
+            util.write_out(three_col.format(image, del_obj.backend.backend, imageStatus))
+
+        if not self.args.force:
+                #redefine the objects that needed to be deleted
+            delete_objects = [del_obj for del_obj in delete_objects if del_obj not in used_images]
+
         if not self.args.assumeyes:
             confirm = util.input("\nConfirm (y/N) ")
             confirm = confirm.strip().lower()
@@ -76,6 +93,11 @@ class Delete(Atomic):
         # Perform the delete
         for del_obj in delete_objects:
             del_obj.backend.delete_image(del_obj.input_name, force=self.args.force)
+
+        if not self.args.force:
+            # for the used images, output the error messages
+            for used_img in used_images:
+                util.write_out("Image {} is being used by a container currently".format(used_img.id[0:12]))
 
         # We need to return something here for dbus
         return 0

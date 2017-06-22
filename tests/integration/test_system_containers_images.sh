@@ -14,6 +14,8 @@ IFS=$'\n\t'
 # 7. info of local images (environment vars)
 # 8. version and verify
 
+CONTAINER_NAME="busybox-test"
+
 setup () {
     docker save atomic-test-system > ${WORK_DIR}/atomic-test-system.tar
 }
@@ -21,6 +23,7 @@ setup () {
 teardown () {
     set +o pipefail
     ${ATOMIC} -y containers delete busybox  &> /dev/null || true
+    ${ATOMIC} -y containers delete ${CONTAINER_NAME} &> /dev/null || true
     # Delete all images from ostree
     ostree --repo=${ATOMIC_OSTREE_REPO} refs --delete ociimage &> /dev/null || true
 }
@@ -78,7 +81,9 @@ assert_not_matches '<none>' ${WORK_DIR}/images.out
 
 
 # 3. deleting/pruning local images
-${ATOMIC} --assumeyes images delete -f --storage ostree busybox
+${ATOMIC} --assumeyes images delete -f --storage ostree busybox > ${WORK_DIR}/image.delete.out
+assert_matches "NO" ${WORK_DIR}/image.delete.out
+assert_matches "USED" ${WORK_DIR}/image.delete.out
 ostree --repo=${ATOMIC_OSTREE_REPO} refs > ${WORK_DIR}/ostree_refs.out
 assert_not_matches "ociimage/busybox_3Alatest" ${WORK_DIR}/ostree_refs.out
 
@@ -87,6 +92,13 @@ assert_not_matches "ociimage/busybox_3Alatest" ${WORK_DIR}/ostree_refs.out
 ${ATOMIC} images prune
 ${ATOMIC} images list -f type=ostree --all > ${WORK_DIR}/images.all.out
 assert_matches "<none>" ${WORK_DIR}/images.all.out
+
+#Test that when image is being used, it can not be deleted without force option
+${ATOMIC} install --system -n ${CONTAINER_NAME} docker.io/busybox
+${ATOMIC} --assumeyes images delete --storage ostree docker.io/busybox > ${WORK_DIR}/image.delete.out
+assert_matches "YES" ${WORK_DIR}/image.delete.out
+assert_matches "is being used by a container currently" ${WORK_DIR}/image.delete.out
+${ATOMIC} --assumeyes containers delete ${CONTAINER_NAME}
 
 # Test that the image can be deleted by ID
 BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=ostree | grep busybox | awk '{print $3}')
