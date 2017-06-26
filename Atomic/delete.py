@@ -69,15 +69,25 @@ class Delete(Atomic):
 
         three_col = "   {0:" + str(max_img_name) + "} {1:12}  {2}"
         util.write_out(three_col.format("IMAGE", "STORAGE","USED"))
+
+        unnamed_not_dangling_imgs = []
         for del_obj in delete_objects:
             image = None if not del_obj.repotags else del_obj.repotags[0]
+            print(del_obj.id)
             imageStatus  = 'YES' if del_obj.used else 'NO'
             if image is None or "<none>" in image:
-                image = del_obj.id[0:12]
+                if not del_obj.is_dangling:
+                    unnamed_not_dangling_imgs.append(del_obj)
+                    print("test again is added")
 
+                image = del_obj.id[0:12]
             if del_obj.used:
                 used_images.append(del_obj)
+
             util.write_out(three_col.format(image, del_obj.backend.backend, imageStatus))
+
+        # always elminate out the unnamed not dangling layer
+        delete_objects = [deletable for deletable in delete_objects if deletable not in unnamed_not_dangling_imgs]
 
         if not self.args.force:
                 #redefine the objects that needed to be deleted
@@ -98,6 +108,9 @@ class Delete(Atomic):
             # for the used images, output the error messages
             for used_img in used_images:
                 util.write_out("Image {} is being used by a container currently".format(used_img.id[0:12]))
+
+        for undangling_layer in unnamed_not_dangling_imgs:
+            util.write_out("Image {} is an unnamed layer of an image".format(undangling_layer.id[0:12]))
 
         # We need to return something here for dbus
         return 0

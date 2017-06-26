@@ -150,7 +150,8 @@ class OSTreeBackend(Backend):
 
     @staticmethod
     def get_dangling_images():
-        return []
+        syscontainers = SystemContainers()
+        return syscontainers.get_dangling_system_images()
 
     def make_remote_image(self, image):
         img_obj = self._make_remote_image(image)
