@@ -69,15 +69,22 @@ class Delete(Atomic):
 
         three_col = "   {0:" + str(max_img_name) + "} {1:12}  {2}"
         util.write_out(three_col.format("IMAGE", "STORAGE", "USED"))
+
+        unnamed_not_dangling_imgs = []
         for del_obj in delete_objects:
             image = None if not del_obj.repotags else del_obj.repotags[0]
             image_status  = 'YES' if del_obj.used else 'NO'
             if image is None or "<none>" in image:
+                if not del_obj.is_dangling:
+                    unnamed_not_dangling_imgs.append(del_obj)
                 image = del_obj.id[0:12]
 
             if del_obj.used and not self.args.force:
                 used_images.append(del_obj)
             util.write_out(three_col.format(image, del_obj.backend.backend, image_status))
+
+        # always elminate out the unnamed not dangling layer
+        delete_objects = [deletable for deletable in delete_objects if deletable not in unnamed_not_dangling_imgs]
 
         if not self.args.force:
             # redefine the objects that needed to be deleted
@@ -99,6 +106,10 @@ class Delete(Atomic):
             for used_img in used_images:
                 util.write_out("Error: conflict: unable to remove repository reference \"{}\"(must-force) - container(s) {} is using its referenced image {}".format(used_img.input_name,
                                 beu.get_container_ids_from_image(used_img.id),used_img.id[0:12]))
+
+        for undangling_layer in unnamed_not_dangling_imgs:
+            util.write_out("Image {} is an unnamed layer of an image".format(undangling_layer.id[0:12]))
+
         # We need to return something here for dbus
         return 0
 

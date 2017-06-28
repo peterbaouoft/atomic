@@ -102,14 +102,28 @@ assert_matches ${CONTAINER_NAME} ${WORK_DIR}/image.delete.out
 assert_matches "docker.io/busybox" ${WORK_DIR}/image.delete.out
 ${ATOMIC} --assumeyes containers delete ${CONTAINER_NAME}
 
-# Test that the image can be deleted by ID and will uninstall containers through -f
+# Test that when the named layer is still present, we are unable to delete the unnamedlayer
+UNNAMED_LAYER_ID=$(${ATOMIC} images list -a -f type=ostree| grep '<none>' | awk '{print $3}')
+${ATOMIC} --assumeyes images delete -f ${UNNAMED_LAYER_ID} > ${WORK_DIR}/images.out
+assert_matches "Image ${UNNAMED_LAYER_ID} is an unnamed layer of an image"  ${WORK_DIR}/images.out
+
+# Test that the image can be deleted by ID and see if unnamedly layer becoming dangling
+# and delete -f will remove the image with the container
 BUSYBOX_IMAGE_ID=$(${ATOMIC} images list -f type=ostree | grep busybox | awk '{print $3}')
 ${ATOMIC} install --system -n ${CONTAINER_NAME} docker.io/busybox
 ${ATOMIC} --assumeyes images delete -f --storage=ostree ${BUSYBOX_IMAGE_ID}
 ${ATOMIC} containers list -a > ${WORK_DIR}/image.delete.out
 assert_not_matches ${CONTAINER_NAME} ${WORK_DIR}/image.delete.out
-${ATOMIC} images list -f type=ostree > ${WORK_DIR}/images.out
+${ATOMIC} images list -a -f type=ostree > ${WORK_DIR}/images.out
 assert_not_matches "busybox" ${WORK_DIR}/images.out
+assert_matches "*  <none>" ${WORK_DIR}/images.out
+
+# Now test if we can remove the dangling images
+${ATOMIC} --assumeyes images delete -f ${UNNAMED_LAYER_ID}  > ${WORK_DIR}/images.out
+assert_not_matches "Image ${UNNAMED_LAYER_ID} is an unnamed layer of an image"  ${WORK_DIR}/images.out
+#check that unnamed image layer is gone
+${ATOMIC} images list -a -f type=ostree > ${WORK_DIR}/images.all.out
+assert_not_matches "<none>" ${WORK_DIR}/images.all.out
 
 # Test that pruning now removes all images
 ${ATOMIC} images prune

@@ -1177,7 +1177,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             imgs = self._resolve_image(repo, imagebranch, allow_multiple=True)
             if imgs is None:
                 raise ValueError("Image %s not found" % imagebranch)
-            _, commit_rev = imgs[0]
+            # replace the old branch with the new branch found
+            imagebranch, commit_rev = imgs[0]
         commit = repo.load_commit(commit_rev)[1]
 
         timestamp = OSTree.commit_get_timestamp(commit)
@@ -1368,6 +1369,53 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         if rpm_installed:
             RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
+
+    # get the corresponding layers from an image
+    def get_layers_from_image(self,img,repo):
+        try:
+            _, rev = self._resolve_image(repo, img,allow_multiple=True)[0]
+        except (IndexError, TypeError):
+            raise ValueError("Image {} not found".format(img))
+        manifest = self._image_manifest(repo, rev)
+        if not manifest:
+            return None
+        layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
+        return layers
+
+    # define a function to handle layer image checking
+    def get_dangling_system_images(self):
+
+        repo = self._get_ostree_repo()
+
+        if not repo:
+            return
+
+        # all the named image layers
+        named_layer_images = [x['Id'] for x in self.get_system_images()]
+
+        # all images including the dangling versions
+        all_images = [x['Id'] for x in self.get_system_images(get_all=True)]
+
+        if not named_layer_images:
+            return all_images
+
+        existing_img_id = []
+
+        # for loop to add each layered image into the list
+        for n_img  in named_layer_images:
+            existing_img_id.append(n_img)
+            # get exiting layers from named images
+            existing_image_layers = self.get_layers_from_image(n_img,repo)
+
+            if not existing_image_layers:
+                continue
+
+            for layer in existing_image_layers:
+                existing_img_id.append(layer.replace("sha256:", ""))
+
+        # have a comparsion between the list of images and actual images from layers
+        dangling_images = [image_id for image_id in all_images if image_id not in existing_img_id]
+        return dangling_images
 
     def prune_ostree_images(self):
         repo = self._get_ostree_repo()
