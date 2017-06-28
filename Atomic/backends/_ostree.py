@@ -112,7 +112,29 @@ class OSTreeBackend(Backend):
     def pull_image(self, image, remote_image_obj=None, **kwargs):
         return self.syscontainers.pull_image(image)
 
+    # get containers that is using this image
+    def get_container_from_image(self,image):
+
+        # We get the system containers for its id and image
+        all_container_images = [(container.image,container.id) for container in self.get_containers()]
+
+        matching_container_ids = [container_id for (image_id, container_id) in all_container_images if image_id == image]
+
+        return matching_container_ids
+
     def delete_image(self, image, force=False):
+
+        # when force option is true, delete the containers associated with it
+        if force:
+            # to handle the case where partial id or image name was typed
+            img_obj = self.has_image(image)
+
+            if img_obj:
+                used_containers = self.get_container_from_image(img_obj.id)
+
+                for container in used_containers:
+                    self.delete_container(container)
+
         return self.syscontainers.delete_image(image)
 
     def version(self, image):
