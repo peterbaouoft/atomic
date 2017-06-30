@@ -112,25 +112,18 @@ class OSTreeBackend(Backend):
     def pull_image(self, image, remote_image_obj=None, **kwargs):
         return self.syscontainers.pull_image(image)
 
-    # get containers that is using this image
-    def get_container_from_image(self,image):
 
-        # We get the system containers for its id and image
-        all_container_images = [(container.image,container.id) for container in self.get_containers()]
-
-        matching_container_ids = [container_id for (image_id, container_id) in all_container_images if image_id == image]
-
+    def get_corresponding_containers_from_image_id (self,image_id):
+        all_container_and_image_ids = [(container.image,container.id) for container in self.get_containers()]
+        matching_container_ids = [container_id for (container_image_id, container_id) in all_container_and_image_ids if container_image_id == image_id]
         return matching_container_ids
 
     def delete_image(self, image, force=False):
-
-        # when force option is true, delete the containers associated with it
         if force:
             # to handle the case where partial id or image name was typed
             img_obj = self.has_image(image)
-
             if img_obj:
-                used_containers = self.get_container_from_image(img_obj.id)
+                used_containers = self.get_corresponding_containers_from_image_id(img_obj.id)
 
                 for container in used_containers:
                     self.delete_container(container)
@@ -170,10 +163,8 @@ class OSTreeBackend(Backend):
             layers.append(layer)
         return layers
 
-    @staticmethod
-    def get_dangling_images():
-        syscontainers = SystemContainers()
-        return syscontainers.get_dangling_system_images()
+    def get_dangling_images(self):
+        return self.syscontainers.get_dangling_system_images()
 
     def make_remote_image(self, image):
         img_obj = self._make_remote_image(image)

@@ -89,19 +89,14 @@ class TestInfo(unittest.TestCase):
     def test_delete_all_docker(self):
         with patch('Atomic.backends._docker.DockerBackend.delete_image') as deleteobj:
             with patch('Atomic.backends._docker.DockerBackend._get_images') as imageobj:
-                with patch('Atomic.objects.image.Image.is_dangling') as danglingobj:
-                    args = self.Args()
-                    args.all = True
-                    args.storage = 'docker'
-                    del_ = Delete()
-                    del_.set_args(args)
-                    deleteobj.return_value = None
-                    imageobj.return_value = docker_images
-
-                    # as the data was not real, there is no way to get the metadata
-                    danglingobj.return_value =None
-
-                    self.assertEqual(del_.delete_image(), 0)
+                args = self.Args()
+                args.all = True
+                args.storage = 'docker'
+                del_ = Delete()
+                del_.set_args(args)
+                deleteobj.return_value = None
+                imageobj.return_value = docker_images
+                self.assertEqual(del_.delete_image(), 0)
 
     def test_delete_all_ostree(self):
         with patch('Atomic.backends._ostree.OSTreeBackend.delete_image') as deleteobj:
@@ -113,7 +108,9 @@ class TestInfo(unittest.TestCase):
                     del_ = Delete()
                     del_.set_args(args)
                     deleteobj.return_value = None
-                    # Similar reason as docker above
+                    # Set the dangling object to be none because checking layer information
+                    # requires data from metadata, which we currenlty do not have for
+                    # the unit test object
                     danglingobj.return_value = None
                     imageobj.return_value = ostree_images
                     self.assertEqual(del_.delete_image(), 0)

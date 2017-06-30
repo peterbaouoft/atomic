@@ -1370,57 +1370,26 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if rpm_installed:
             RPMHostInstall.uninstall_rpm(rpm_installed.replace(".rpm", ""))
 
-    # get the corresponding layers from an image
-    def get_layers_from_image(self,img,repo):
-        try:
-            _, rev = self._resolve_image(repo, img,allow_multiple=True)[0]
-        except (IndexError, TypeError):
-            raise ValueError("Image {} not found".format(img))
-        manifest = self._image_manifest(repo, rev)
-        if not manifest:
-            return None
-        layers = SystemContainers.get_layers_from_manifest(json.loads(manifest))
-        return layers
 
-    # define a function to handle layer image checking
     def get_dangling_system_images(self):
 
         repo = self._get_ostree_repo()
-
         if not repo:
             return
 
-        # all the named image layers
-        named_layer_images = [x['Id'] for x in self.get_system_images()]
+        dangling_image_ids = []
+        dangling_refs = self._check_used_layers(repo)
 
-        # all images including the dangling versions
-        all_images = [x['Id'] for x in self.get_system_images(get_all=True)]
+	# each ref essentially can be seen as image branch
+        for dangling_image_branch in dangling_refs:
+            dangling_img = self._inspect_system_branch(repo,dangling_image_branch)
+            img_id = dangling_img['Id']
+            dangling_image_ids.append(img_id)
 
-        if not named_layer_images:
-            return all_images
+        return dangling_image_ids
 
-        existing_img_id = []
 
-        # for loop to add each layered image into the list
-        for n_img  in named_layer_images:
-            existing_img_id.append(n_img)
-            # get exiting layers from named images
-            existing_image_layers = self.get_layers_from_image(n_img,repo)
-
-            if not existing_image_layers:
-                continue
-
-            for layer in existing_image_layers:
-                existing_img_id.append(layer.replace("sha256:", ""))
-
-        # have a comparsion between the list of images and actual images from layers
-        dangling_images = [image_id for image_id in all_images if image_id not in existing_img_id]
-        return dangling_images
-
-    def prune_ostree_images(self):
-        repo = self._get_ostree_repo()
-        if not repo:
-            return
+    def _check_used_layers(self,repo):
         refs = {}
         app_refs = []
 
@@ -1449,11 +1418,22 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         for app in app_refs:
             visit(app)
 
-        for k, v in refs.items():
-            if not v:
-                ref = OSTree.parse_refspec(k)
-                util.write_out("Deleting %s" % k)
-                repo.set_ref_immediate(ref[1], ref[2], None)
+        dangling_refs = [dangling_ref for dangling_ref, img_valid in refs.items() if not img_valid]
+
+        return dangling_refs
+
+    def prune_ostree_images(self):
+        repo = self._get_ostree_repo()
+        if not repo:
+            return
+
+        dangling_refs = self._check_used_layers(repo)
+
+        for k in dangling_refs:
+            ref = OSTree.parse_refspec(k)
+            util.write_out("Deleting %s" % k)
+            repo.set_ref_immediate(ref[1], ref[2], None)
+
         repo.prune(OSTree.RepoPruneFlags.NONE, -1)
         self._prune_storage(repo)
 

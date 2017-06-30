@@ -156,11 +156,9 @@ class BackendUtils(object):
             con_objs += be.get_containers()
         return con_objs
 
-    def get_container_ids_from_image(self,image):
-        # We get the system containers for its id and image
+    def get_container_ids_from_image_id(self,image_id):
         all_container_images = [(container.image,container.id) for container in self.get_containers()]
-
-        matching_container_ids = [container_id for (image_id, container_id) in all_container_images if image_id == image]
+        matching_container_ids = [container_id for (container_image_id, container_id) in all_container_images if container_image_id == image_id]
         return matching_container_ids
 
     def get_container_obj_by_image_name(self, image_name, str_preferred_backend):
