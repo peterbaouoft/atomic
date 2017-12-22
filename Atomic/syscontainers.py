@@ -1133,9 +1133,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not repo:
             raise ValueError("Cannot find a configured OSTree repo")
 
-        checkout = self._get_system_checkout_path()
+        system_checkout_path = self._get_system_checkout_path()
 
-        path = os.path.join(checkout, name)
+        path = os.path.join(system_checkout_path, name)
         with open(os.path.join(path, "info"), 'r') as info_file:
             info = json.loads(info_file.read())
             self.args.remote = info['remote']
@@ -1146,7 +1146,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if os.path.realpath(path).endswith(".0"):
             next_deployment = 1
 
-        info, rpm_installed, installed_files_checksum = self._gather_installed_files_info(checkout, name)
+        info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
         image = rebase or info["image"]
         values = info["values"]
         revision = info["revision"] if "revision" in info else None
@@ -1193,13 +1193,13 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         :param name: The container to rollback.
         :type name: str
         """
-        checkout = self._get_system_checkout_path()
-        path = os.path.join(checkout, name)
+        system_checkout_path = self._get_system_checkout_path()
+        path = os.path.join(system_checkout_path, name)
         destination = "%s.%d" % (path, (1 if os.path.realpath(path).endswith(".0") else 0))
         if not os.path.exists(destination):
             raise ValueError("Error: Cannot find a previous deployment to rollback located at %s" % destination)
 
-        info, rpm_installed, installed_files_checksum = self._gather_installed_files_info(checkout, name)
+        info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
         rename_files = None
         installed_files_template = info["installed-files-template"] if "installed-files-template" in info and rpm_installed is None else None
         has_container_service = info["has-container-service"] if "has-container-service" in info else True
@@ -1630,12 +1630,12 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             RPMHostInstall.uninstall_rpm("%s-%s" % (RPM_NAME_PREFIX, name))
             return
 
-        checkout = self._get_system_checkout_path()
+        system_checkout_path = self._get_system_checkout_path()
 
-        if not os.path.exists(os.path.join(checkout, name)):
+        if not os.path.exists(os.path.join(system_checkout_path, name)):
             return
 
-        with open(os.path.join(checkout, name, "info"), "r") as info_file:
+        with open(os.path.join(system_checkout_path, name, "info"), "r") as info_file:
             info = json.loads(info_file.read())
             has_container_service = info["has-container-service"] if "has-container-service" in info else True
 
@@ -1663,7 +1663,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 pass
             os.unlink(tmpfilesout)
 
-        info, rpm_installed, installed_files_checksum = self._gather_installed_files_info(checkout, name)
+        info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
 
         if installed_files_checksum:
             RPMHostInstall.rm_add_files_to_host(installed_files_checksum, None)
@@ -1676,14 +1676,14 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         # Until the symlink and the deployment are in place, we can attempt the uninstall again.
         # So treat as fatal each failure that happens before we rm the symlink.
-        symlink_path = os.path.join(checkout, name)
+        symlink_path = os.path.join(system_checkout_path, name)
         if os.path.lexists(symlink_path):
             os.unlink(symlink_path)
 
         # Nothing more left, rm -rf the deployments, if this fails "images prune" will take care
         # of it.
         for deploy in ["0", "1"]:
-            deploy_path = os.path.join(checkout, "{}.{}".format(name, deploy))
+            deploy_path = os.path.join(system_checkout_path, "{}.{}".format(name, deploy))
             if os.path.exists(deploy_path):
                 shutil.rmtree(deploy_path)
 
