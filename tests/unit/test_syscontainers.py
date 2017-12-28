@@ -35,6 +35,38 @@ if no_mock:
 
     patch = fake_patch
 
+@unittest.skipIf(no_mock, "Mock not found")
+class TestSystemContainers_do_checkout(unittest.TestCase):
+    """
+    Unit tests for refactored function from SystemContainers.do_checkout method.
+    """
+    def test_get_remote_location(self):
+        """
+        We create temp directories in tmp folder, then remove it after the test completes
+
+        """
+        # Create directories for 3 different cases '_get_remote_location' is checking
+        try:
+            os.makedirs('/tmp/test-remote/rootfs/usr')
+            os.mkdir('/tmp/not-valid-test')
+        # If the directories already exist, we do not error out here
+        except OSError:
+            pass
+
+        try:
+            # Here: we check for 3 different cases _get_remote_location verifies
+            sc = SystemContainers()
+            remote_path_one = sc._get_remote_location('/tmp/test-remote/')
+            self.assertEqual(remote_path_one, '/tmp/test-remote')
+
+            remote_path_two = sc._get_remote_location('/tmp/test-remote/rootfs/')
+            self.assertEqual(remote_path_two, '/tmp/test-remote')
+
+            self.assertRaises(ValueError, sc._get_remote_location, '/tmp/not-valid-test')
+        finally:
+            # We then remove the directories to keep the user's fs clean
+            os.rmdir('/tmp/not-valid-test')
+            shutil.rmtree('/tmp/test-remote')
 
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
