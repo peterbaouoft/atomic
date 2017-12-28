@@ -57,10 +57,10 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
             # Here: we check for 3 different cases _get_remote_location verifies
             sc = SystemContainers()
             remote_path_one = sc._get_remote_location('/tmp/test-remote/')
-            self.assertEqual(remote_path_one, '/tmp/test-remote')
+            self.assertEqual(remote_path_one, os.path.realpath('/tmp/test-remote'))
 
             remote_path_two = sc._get_remote_location('/tmp/test-remote/rootfs/')
-            self.assertEqual(remote_path_two, '/tmp/test-remote')
+            self.assertEqual(remote_path_two, os.path.realpath('/tmp/test-remote'))
 
             self.assertRaises(ValueError, sc._get_remote_location, '/tmp/not-valid-test')
         finally:
