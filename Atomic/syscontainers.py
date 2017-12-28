@@ -296,9 +296,9 @@ class SystemContainers(object):
         remote_path = self._resolve_remote_path(remote_input)
         if remote_path:
             remote_rootfs = os.path.sep.join([remote_path, "rootfs"])
-            if os.path.exists(remote_path):
+            if os.path.exists(remote_rootfs):
                 util.write_out("The remote rootfs for this container is set to be {}".format(remote_rootfs))
-            elif os.path.exists(os.path.sep.join([remote_input, "usr"])):  # Assume that the user directly gave the location of the rootfs
+            elif os.path.exists(os.path.sep.join([remote_path, "usr"])):  # Assume that the user directly gave the location of the rootfs
                 remote_path = os.path.dirname(remote_path)  # Use the parent directory as the "container location"
             else:
                 raise ValueError("--remote was specified but the given location does not contain a rootfs")
