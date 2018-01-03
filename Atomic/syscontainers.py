@@ -890,7 +890,7 @@ class SystemContainers(object):
 
         manifest = self._image_manifest(repo, rev)
 
-        # TODO: The "missing layer" check logic here can be refactored once we migrate to use skopeo only
+        # todo: The "missing layer" check logic here can be refactored once we migrate to use skopeo only
         if not remote_path:
             rootfs_fd = None
             try:
