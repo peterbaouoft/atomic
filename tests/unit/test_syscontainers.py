@@ -153,14 +153,15 @@ class TestSystemContainers_do_checkout(unittest.TestCase):
             # We remove the file to keep the destination clean for next operation
             os.remove(dest_location_config)
 
-            # Renmae exports/config.json to exports/config.json.template
+            # Rename exports/config.json to exports/config.json.template
             os.rename(exports_json, exports_json + ".template")
             sc._write_config_to_dest(dest_location, exports_location, new_values)
             self.assertTrue(os.path.exists(dest_location_config), True)
             check_attr_in_json_file(dest_location_config, "test_one", "new_val")
             os.remove(dest_location_config)
 
-            # Note: in this case, the configuration is generated and changed via 'generate_default_oci_configuration' which uses runc. Thus, we assume when user tries to run the unit test with this function, he will have runc installed
+            # Note: in this case, the configuration is generated and changed via 'generate_default_oci_configuration' which uses runc.
+            # Thus, we assume when user tries to run the unit test with this function, he will have runc installed
             sc._write_config_to_dest(dest_location, os.path.join(tmpdir, "not_exist"))
             self.assertTrue(os.path.exists(dest_location_config), True)
             check_attr_in_json_file(dest_location_config, "root", "rootfs", second_attr="path")
