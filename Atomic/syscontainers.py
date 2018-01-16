@@ -643,13 +643,13 @@ class SystemContainers(object):
         options = {"name" : name,
                    "img" : img,
                    "deployment" : deployment,
-                   "UpgradeMode" : mode,
+                   "upgrade_mode" : mode,
                    "values" : values,
                    "destination" : destination,
                    "extract_only" : extract_only,
                    "remote" : remote,
                    "prefix" : prefix,
-                   "InstalledFilesChecksum" : installed_files_checksum,
+                   "installed_files_checksum" : installed_files_checksum,
                    "system_package" : system_package}
         return self._checkout(repo, options)
 
@@ -659,7 +659,7 @@ class SystemContainers(object):
         options["unitfileout"] = unitfileout
         options["tmpfilesout"] = tmpfilesout
 
-        install_mode = options["UpgradeMode"]  == SystemContainers.CHECKOUT_MODE_INSTALL
+        install_mode = options["upgrade_mode"]  == SystemContainers.CHECKOUT_MODE_INSTALL
 
         if install_mode:
             for f in [unitfileout, tmpfilesout]:
@@ -999,7 +999,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         # When upgrading, stop the service and remove previously installed
         # tmpfiles, before restarting the service.
-        if has_container_service and options["UpgradeMode"] != SystemContainers.CHECKOUT_MODE_INSTALL:
+        if has_container_service and options["upgrade_mode"] != SystemContainers.CHECKOUT_MODE_INSTALL:
             if was_service_active:
                 self._systemctl_command("stop", options["name"])
             if os.path.exists(options["tmpfilesout"]):
@@ -1031,7 +1031,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if rpm_installed or options["system_package"] == 'absent':
             new_installed_files_checksum = {}
         else:
-            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["InstalledFilesChecksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files)
+            new_installed_files_checksum = RPMHostInstall.rm_add_files_to_host(options["installed_files_checksum"], exports, options["prefix"] or "/", files_template=installed_files_template, values=options["values"], rename_files=rename_files)
 
         new_installed_files = list(new_installed_files_checksum.keys())
         try:
@@ -1103,10 +1103,10 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if (tmpfiles_template):
                 self._systemd_tmpfiles("--create", options["tmpfilesout"])
 
-            if options["UpgradeMode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
+            if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
                 self._systemctl_command("enable", options["name"])
             elif was_service_active:
-                if options["UpgradeMode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
+                if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
                     must_rollback = False
                     try:
                         self._systemctl_command("start", options["name"])
