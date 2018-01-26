@@ -19,6 +19,19 @@ except ImportError:
         # Mock is already set to False
         pass
 
+if no_mock:
+    # If there is no mock, we need need to create a fake
+    # patch decorator
+    def fake_patch(a, new=''):
+        def foo(func):
+            def wrapper(*args, **kwargs):
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        return foo
+
+    patch = fake_patch
+
 @unittest.skipIf(no_mock, "Mock not found")
 class TestRPMHostInstall(unittest.TestCase):
 
