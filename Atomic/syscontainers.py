@@ -1702,7 +1702,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             if repo is None:
                 return []
         revs = [x for x in repo.list_refs()[1] if x.startswith(OSTREE_OCIIMAGE_PREFIX) \
-                and (get_all or SystemContainers.is_hex(get_img_ref_str(x)))]
+                and (get_all or not SystemContainers.is_hex(get_img_ref_str(x)))]
 
         return [self._inspect_system_branch(repo, x) for x in revs]
 
