@@ -1628,8 +1628,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         image_id = commit_rev
         id_ = None
 
-        is_layer_ref = SystemContainers.is_hex(branch_id) and len(branch_id) == 64
-        if is_layer_ref:
+        if SystemContainers.is_hex(branch_id):
             image_id = branch_id
             tag = "<none>"
         elif '@sha256:' in branch_id:
