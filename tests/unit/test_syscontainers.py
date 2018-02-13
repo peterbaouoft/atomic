@@ -317,8 +317,8 @@ class TestSystemContainers_miscellaneous(unittest.TestCase):
         self.assertTrue(qual_img_with_tag_ref.endswith("_3Atag"))
 
         non_qual_img_without_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_without_tag)
-        self.assertFalse(SystemContainers.is_hex(non_qual_img_without_tag_ref))
-
+        ref_is_hex = SystemContainers._is_hex(non_qual_img_without_tag_ref)
+        self.assertFalse(ref_is_hex)
         non_qual_img_with_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_with_tag)
         self.assertTrue(non_qual_img_with_tag_ref.endswith("_3Atag"))
 
