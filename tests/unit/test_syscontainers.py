@@ -304,6 +304,10 @@ class TestSystemContainers_miscellaneous(unittest.TestCase):
         when calling _encode_to_ostree_ref
         """
 
+        def ensure_ref_is_not_hex(ref):
+            ref_is_hex = SystemContainers._is_hex(ref)
+            self.assertFalse(ref_is_hex)
+
         qual_img_without_tag = "registry.fedoraproject.org/f27/kubernetes-apiserver"
         qual_img_with_tag = qual_img_without_tag + ":tag"
         non_qual_img_without_tag = "cafe"
@@ -311,16 +315,19 @@ class TestSystemContainers_miscellaneous(unittest.TestCase):
 
         qual_img_without_tag_ref = SystemContainers._encode_to_ostree_ref(qual_img_without_tag)
         self.assertTrue(qual_img_without_tag_ref.endswith("latest"))
+        ensure_ref_is_not_hex(qual_img_without_tag_ref)
 
         # The encoded ref will have ":" translated to _3A (unicode)
         qual_img_with_tag_ref = SystemContainers._encode_to_ostree_ref(qual_img_with_tag)
         self.assertTrue(qual_img_with_tag_ref.endswith("_3Atag"))
+        ensure_ref_is_not_hex(qual_img_with_tag_ref)
 
         non_qual_img_without_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_without_tag)
-        ref_is_hex = SystemContainers._is_hex(non_qual_img_without_tag_ref)
-        self.assertFalse(ref_is_hex)
+        ensure_ref_is_not_hex(non_qual_img_without_tag_ref)
+
         non_qual_img_with_tag_ref = SystemContainers._encode_to_ostree_ref(non_qual_img_with_tag)
         self.assertTrue(non_qual_img_with_tag_ref.endswith("_3Atag"))
+        ensure_ref_is_not_hex(non_qual_img_with_tag_ref)
 
 @unittest.skipIf(no_mock, "Mock not found")
 class TestSystemContainers_container_exec(unittest.TestCase):
