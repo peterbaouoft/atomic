@@ -1154,7 +1154,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return options["values"]
 
         try:
-            self.checkout_container_wrapup(rpm_install_content, tmpfiles_template, options, was_service_active)
+            self.finalize_checkout(rpm_install_content, tmpfiles_template, options, was_service_active)
         except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_install_content["rpm_installed"]:
                 RPMHostInstall.uninstall_rpm(rpm_install_content["rpm_installed"])
@@ -1165,7 +1165,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         return options["values"]
 
-    def checkout_container_wrapup(self, rpm_install_content, tmpfiles_template, options, was_service_active):
+    def finalize_checkout(self, rpm_install_content, tmpfiles_template, options, was_service_active):
         """
         Last stage of checking out a container. It includes outputting results,
         setup for systemd part, and service starting
@@ -1182,11 +1182,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._systemd_tmpfiles("--create", options["tmpfilesout"])
 
         # Note, when a rollback for container happens, the values from options will be reset to empty
-        self.checked_out_container_systemd_setup(options, was_service_active)
+        self.systemd_service_setup(options, was_service_active)
 
-    def checked_out_container_systemd_setup(self, options, was_service_active):
+    def systemd_service_setup(self, options, was_service_active):
         """
-        Handle container service accordingly based on was_service_active and cotnainer name.
+        Handle container service accordingly based on was_service_active and container name.
         If the container service was active before, the new container service will be started as well
         """
         if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_INSTALL:
@@ -1201,21 +1201,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         # Note, here we check if the container needs rollback by starting the
         # container service. If no rollback is needed, the container service
         # remains active
-        if(self.is_container_rollback_needed(options["name"])):
-            self.rollback_checked_out_container(options["name"])
-            options["values"] = {}
-
-    def is_container_rollback_needed(self, name):
+        container_rollback_needed = False
         try:
-            self._systemctl_command("start", name)
+            self._systemctl_command("start", options["name"])
         except subprocess.CalledProcessError:
-            return True
-        return False
-
-    def rollback_checked_out_container(self, name):
-        util.write_err("Could not restart {}.  Attempt automatic rollback".format(name))
-        self.rollback(name)
-        self._systemctl_command("start", name)
+            container_rollback_needed = True
+        if container_rollback_needed:
+            util.write_err("Could not restart {}.  Attempt automatic rollback".format(options["name"]))
+            self.rollback(options["name"])
+            self._systemctl_command("start", options["name"])
+            options["values"] = {}
 
     def _get_preinstalled_containers_path(self):
         return ATOMIC_USR
