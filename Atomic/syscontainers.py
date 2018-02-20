@@ -1154,7 +1154,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             return options["values"]
 
         try:
-            self.finalize_checkout(rpm_install_content, tmpfiles_template, options, was_service_active)
+            self._finalize_checkout(rpm_install_content, tmpfiles_template, options, was_service_active)
         except (subprocess.CalledProcessError, KeyboardInterrupt):
             if rpm_install_content["rpm_installed"]:
                 RPMHostInstall.uninstall_rpm(rpm_install_content["rpm_installed"])
@@ -1165,7 +1165,7 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
         return options["values"]
 
-    def finalize_checkout(self, rpm_install_content, tmpfiles_template, options, was_service_active):
+    def _finalize_checkout(self, rpm_install_content, tmpfiles_template, options, was_service_active):
         """
         Last stage of checking out a container. It includes outputting results,
         setup for systemd part, and service starting
@@ -1182,9 +1182,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._systemd_tmpfiles("--create", options["tmpfilesout"])
 
         # Note, when a rollback for container happens, the values from options will be reset to empty
-        self.systemd_service_setup(options, was_service_active)
+        self._systemd_service_setup(options, was_service_active)
 
-    def systemd_service_setup(self, options, was_service_active):
+    def _systemd_service_setup(self, options, was_service_active):
         """
         Handle container service accordingly based on was_service_active and container name.
         If the container service was active before, the new container service will be started as well
@@ -1193,11 +1193,11 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             self._systemctl_command("enable", options["name"])
         elif was_service_active:
             if options["upgrade_mode"] == SystemContainers.CHECKOUT_MODE_UPGRADE_CONTROLLED:
-                self.start_container_and_rollback_if_necessary(options)
+                self._start_container_and_rollback_if_necessary(options)
             else:
                 self._systemctl_command("start", options["name"])
 
-    def start_container_and_rollback_if_necessary(self, options):
+    def _start_container_and_rollback_if_necessary(self, options):
         # Note, here we check if the container needs rollback by starting the
         # container service. If no rollback is needed, the container service
         # remains active
