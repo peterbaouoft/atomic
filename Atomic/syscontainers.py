@@ -291,13 +291,20 @@ class SystemContainers(object):
         :param name: name for the container
         :returns: info object, rpm_installed field value, installed_files_checksum field value
         """
-        with open(os.path.join(checkout, name, "info"), "r") as info_file:
-            info = json.loads(info_file.read())
-            rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
-            installed_files_checksum = info["installed-files-checksum"] if "installed-files-checksum" in info else None
-            if installed_files_checksum is None:
-                installed_files = info["installed-files"] if "installed-files" in info else None
-                installed_files_checksum = {k : "" for k in installed_files}
+        rpm_installed = None
+        installed_files_checksum = None
+        info = {}
+        container_path = os.path.join(checkout, name)
+        try:
+            with open(os.path.join(container_path, "info"), "r") as info_file:
+                info = json.loads(info_file.read())
+                rpm_installed = info["rpm-installed"] if "rpm-installed" in info else None
+                installed_files_checksum = info["installed-files-checksum"] if "installed-files-checksum" in info else None
+                if installed_files_checksum is None:
+                    installed_files = info["installed-files"] if "installed-files" in info else None
+                    installed_files_checksum = {k : "" for k in installed_files}
+        except IOError:
+            util.write_err("Warning! Container at {} is missing its info file. Please pay close attention to it!\n")
 
         return info, rpm_installed, installed_files_checksum
 
@@ -1330,11 +1337,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         system_checkout_path = self._get_system_checkout_path()
 
         path = os.path.join(system_checkout_path, name)
-        with open(os.path.join(path, "info"), 'r') as info_file:
-            info = json.loads(info_file.read())
-            self.args.remote = info['remote']
-            if self.args.remote:
-                util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
 
         next_deployment = 0
         if os.path.realpath(path).endswith(".0"):
@@ -1344,11 +1346,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
             rebase = self._pull_image_to_ostree(repo, rebase, False)
 
         info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
-        image = rebase or info["image"]
-        values = info["values"]
+        image = rebase or info["image"] if "image" in info else None
+        if image is None:
+            raise ValueError("Can not update container when no information about its image is given")
+        values = info["values"] if "values" in info else {}
         revision = info["revision"] if "revision" in info else None
         system_package = info["system-package"] if "system-package" in info else None
         runtime = info["runtime"] if "runtime" in info else None
+        self.args.remote = info['remote'] if "remote" in info else None
+        if self.args.remote:
+            util.write_out("Updating a container with a remote rootfs. Only changes to config will be applied.")
 
         # Check if the image id or the configuration for the container has
         # changed before upgrading it.
@@ -1501,13 +1508,16 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 # in the results from the symlink and not from the deployments.
                 if os.path.islink(fullpath[:-2]):
                     continue
-
-            with open(os.path.join(fullpath, "info"), "r") as info_file:
-                info = json.load(info_file)
-                revision = info["revision"] if "revision" in info else ""
-                created = info["created"] if "created" in info else 0
-                image = info["image"] if "image" in info else ""
-                runtime = info["runtime"] if "runtime" in info else self._get_oci_runtime()
+            try:
+                with open(os.path.join(fullpath, "info"), "r") as info_file:
+                    info = json.load(info_file)
+                    revision = info["revision"] if "revision" in info else ""
+                    created = info["created"] if "created" in info else 0
+                    image = info["image"] if "image" in info else ""
+                    runtime = info["runtime"] if "runtime" in info else self._get_oci_runtime()
+            except IOError:
+                util.write_err("Container at {} is missing its info file. Please consider reinstalling the container\n".format(fullpath))
+                continue
 
             command = ""
             config_json = os.path.join(fullpath, "config.json")
@@ -1870,9 +1880,8 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         if not os.path.exists(os.path.join(system_checkout_path, name)):
             return
 
-        with open(os.path.join(system_checkout_path, name, "info"), "r") as info_file:
-            info = json.loads(info_file.read())
-            has_container_service = info["has-container-service"] if "has-container-service" in info else True
+        info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
+        has_container_service = info["has-container-service"] if "has-container-service" in info else True
 
         unitfileout, tmpfilesout = self._get_systemd_destination_files(name)
         if has_container_service:
@@ -1898,7 +1907,6 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
                 pass
             os.unlink(tmpfilesout)
 
-        info, rpm_installed, installed_files_checksum = SystemContainers._gather_installed_files_info(system_checkout_path, name)
 
         if installed_files_checksum:
             RPMHostInstall.rm_add_files_to_host(installed_files_checksum, None)
