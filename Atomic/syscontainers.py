@@ -2165,13 +2165,18 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
 
     def _skopeo_copy_img_to_ostree(self, img, skopeo_img_source, src_creds=None, insecure=None):
         """
-        Pefrom skopeo copy operation to copy images from img_source to ostree location based on image
+        Perform skopeo copy operation to copy images from img_source to ostree location based on image
         name
         :param img: image name
+        :type img: str
         :param skopeo_img_source: the source for skopeo copying
-        :src_creds: source credientials if pulled from online registries
-        :insecure: tell skopeo whether the registry is secure or not
+        :type skopeo_img_source: str
+        :param src_creds: source credentials if pulled from online registries
+        :type src_creds: str in the form of USERNAME[:PASSWORD]
+        :param insecure: tell skopeo whether the registry is secure or not
+        :type insecure: bool
         :returns: True if successfully performed copy operation, a ValueError can be raised upon failures
+        :rtype: bool
         """
         repo = self.get_ostree_repo_location()
 
@@ -2191,7 +2196,9 @@ Warning: You may want to modify `%s` before starting the service""" % os.path.jo
         """
         Retrieve the image name from the dockertar file
         :param tarpath: the path of the docker tar file
+        :type tarpath: str
         :returns: the true image name got from the dockertar
+        :rtype: str
         """
         temp_dir = tempfile.mkdtemp()
         try:
